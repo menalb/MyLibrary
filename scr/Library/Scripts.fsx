@@ -47,7 +47,7 @@ let b : Book = {
     }
 addBook(b)
 
-let addAuthor (author: Author) = 
+let addAuthor  (connection:string) (author: Author) = 
     use a = new LibraryDb.dbo.Tables.Author()
     a.AddRow(author.Name)
     use connection = new SqlConnection(Conn)
@@ -60,21 +60,21 @@ let addAuthor (author: Author) =
 let a : Author = { Name = "Isaac Abraham" }
 addAuthor(a)
 
-let getAuthor name : ExistingAuthor option=
+let getAuthor  (connection:string) name : ExistingAuthor option=
     match GetAuthorsByName.Create(Conn).Execute(name) with
     | Some author -> Some({Id =author.Id; Name = author.Name})
     | _ -> None
 
 let auth = getAuthor "Isaac Abraham"
 
-let getBook title : ExistingBook option=
+let getBook  (connection:string) title : ExistingBook option=
     match GetBooksByTitle.Create(Conn).Execute(title) with
     | Some book -> Some({Id =book.Id; Title = book.Title; Description= book.Description; ISBN=book.ISBN})
     | _ -> None
 
 let book1 = getBook "Get Programming with F#"
 
-let addBookAuthor (bookId: int) (authorId: int) = 
+let addBookAuthor  (connection:string) (bookId: int) (authorId: int) = 
     use ab = new LibraryDb.dbo.Tables.Author_Book()
     ab.AddRow(authorId, bookId)
     use connection = new SqlConnection(Conn)
