@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="App.config" />
     <Compile Include="Domain.fs" />
+    <Compile Include="SqlRepository.fs" />
+    <Compile Include="Api.fs" />
     <None Include="Scripts.fsx" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -14,6 +17,10 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="3.0.0" />
     <PackageReference Include="FSharp.Data.SqlClient" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.6.1" />
   </ItemGroup>
 
 </Project>
