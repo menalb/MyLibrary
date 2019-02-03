@@ -3,6 +3,7 @@
 open Domain
 open FSharp.Data
 open System.Data.SqlClient
+open System.Drawing
 
 [<AutoOpen>]
 module private DB =
@@ -21,42 +22,46 @@ let (|PrimaryKeyConstraint|_|) (ex:exn) =
     | :? SqlException as ex when ex.Message.Contains "Violation of PRIMARY KEY constraint" -> Some PrimaryKeyConstraint
     | _ -> None
 
-let getBook (connection:string) (title : string) : ExistingBook option=
-    match GetBooksByTitle.Create(connection).Execute(title) with
+let getBook (connectionString:string) (title : string) : ExistingBook option=
+    match GetBooksByTitle.Create(connectionString).Execute(title) with
     | Some book -> Some({Id =book.Id; Title = book.Title; Description= book.Description; ISBN=book.ISBN})
     | _ -> None
 
-let getAuthor  (connection:string) (name : string) : ExistingAuthor option=
-    match GetAuthorsByName.Create(connection).Execute(name) with
+let getAuthor  (connectionString:string) (name : string) : ExistingAuthor option=
+    match GetAuthorsByName.Create(connectionString).Execute(name) with
     | Some author -> Some({Id =author.Id; Name = author.Name})
     | _ -> None
 
-let addAuthor (connection:string) (author: Author) = 
+let addAuthor (connectionString:string) (author: Author) = 
     use authorDb = new DbTables.Author()
     authorDb.AddRow(author.Name)
-    use connection = new SqlConnection(connection)
+    use connection = new SqlConnection(connectionString)
     connection.Open()
     try authorDb.Update(connection) |> ignore
     with
     | PrimaryKeyConstraint -> ()
     | _ -> reraise()
 
-let addBook (connection:string) (book: Book) = 
-    use bookDb = new DbTables.Book()
-    bookDb.AddRow(book.Title,book.ISBN, book.Description)
-    use connection = new SqlConnection(connection)
-    connection.Open()
-    try bookDb.Update(connection) |> ignore
-    with
-    | PrimaryKeyConstraint -> ()
-    | _ -> reraise()
-
-let addBookAuthor (connection:string) (bookId: int) (authorId: int) = 
+let private addBookAuthor (connectionString:string) (bookId: int) (authorId: int) tran= 
     use reference = new LibraryDb.dbo.Tables.Author_Book()
     reference.AddRow(authorId, bookId)
-    use connection = new SqlConnection(connection)
+    use connection = new SqlConnection(connectionString)
     connection.Open()
-    try reference.Update(connection) |> ignore
+    try reference.Update(connection,tran) |> ignore
     with
     | PrimaryKeyConstraint -> ()
     | _ -> reraise()
+    
+let addBook (connectionString:string) (book: Book) = 
+    use bookDb = new DbTables.Book()
+    bookDb.AddRow(book.Title,book.ISBN, book.Description)
+    use connection = new SqlConnection(connectionString)
+    connection.Open()
+    use tran = connection.BeginTransaction()
+    try bookDb.Update(connection) |> ignore
+    with
+    | PrimaryKeyConstraint -> match (getBook connectionString book.Title , getAuthor connectionString book.Author.Name) with
+                              | Some existingBook, Some existingAuthor -> addBookAuthor connectionString existingBook.Id existingAuthor.Id tran
+                              | _, _-> failwith "Book not saved"
+    | _ -> reraise()
+    
